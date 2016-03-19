@@ -33,18 +33,9 @@
 
 #include "ofMain.h"
 
-#if defined(TARGET_WIN32)
-    #if not defined(NOMINMAX)
-        #define NOMINMAX
-    #endif
-    #include <windows.h>
-#elif defined(TARGET_OSX)
-	#include <sys/time.h>
-	#include <mach/mach_time.h>
-#elif defined(TARGET_LINUX)
-	#include "time.h"
-	#include <inttypes.h>
-#endif
+#define NOMINMAX
+#include <windows.h>
+#undef NOMINMAX
 
 #include "stdio.h"
 #include "stdint.h"
@@ -66,21 +57,22 @@ class ofxMSATimer {
 	uint32_t getMillisSinceLastCall();
 	uint64_t getMicrosSinceLastCall();
 
+	void start();
+	void stop();
+	double getSeconds();			// elapsed seconds since you called start()
+	double getTotalSeconds();	// elapsed seconds since beginning of time
+
 protected:
 
 	uint64_t timerStartTimeMicros;
     uint64_t lastCallTimeMicros;
 
-	#if defined(TARGET_WIN32)
     LARGE_INTEGER ticksPerSecond;
-    LARGE_INTEGER startTime, stopTime;
-	#elif defined(TARGET_OSX)
-    mach_timebase_info_data_t info;
-    uint64_t machStartTime; //nanos
-	#elif defined(TARGET_LINUX)
-    struct timespec startTime;
-    struct timespec tmpTime;
-	#endif
+	LARGE_INTEGER startTime, stopTime;
+
+	double startTimeD, stopTimeD;
+
+	bool isRunning;
 
 };
 

@@ -31,25 +31,14 @@
 
 #include "ofxMSATimer.h"
 
-
-#if defined(TARGET_OSX)
-
-ofxMSATimer::ofxMSATimer(){
-    mach_timebase_info(&info);    
-    machStartTime = mach_absolute_time();
-    getMicrosSinceLastCall();
-}
-
-uint64_t ofxMSATimer::getAppTimeMicros(){
-	return (mach_absolute_time() - machStartTime) * info.numer / (info.denom * 1000);	
-}
-
-#elif defined(TARGET_WIN32)
-
 ofxMSATimer::ofxMSATimer(){
     QueryPerformanceFrequency(&ticksPerSecond);
     QueryPerformanceCounter(&startTime);
     getMicrosSinceLastCall();
+
+	startTimeD = ofGetElapsedTimef();
+	isRunning = false;
+
 }
 
 uint64_t ofxMSATimer::getAppTimeMicros(){
@@ -57,33 +46,6 @@ uint64_t ofxMSATimer::getAppTimeMicros(){
 	return ((stopTime.QuadPart - startTime.QuadPart) * 1000000) / ticksPerSecond.QuadPart;
 }
 
-#elif defined(TARGET_LINUX)
-
-ofxMSATimer::ofxMSATimer(){
-	clock_gettime(CLOCK_MONOTONIC_RAW, &startTime);
-	getMicrosSinceLastCall();
-}
-
-timespec diff(timespec& start, timespec& end)
-{
-	timespec temp;
-	if ((end.tv_nsec-start.tv_nsec)<0) {
-		temp.tv_sec = end.tv_sec-start.tv_sec-1;
-		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
-	} else {
-		temp.tv_sec = end.tv_sec-start.tv_sec;
-		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
-	}
-	return temp;
-}
-
-uint64_t ofxMSATimer::getAppTimeMicros(){
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tmpTime);
-	timespec diffTime = diff(startTime, tmpTime);
-	return  ((int64_t)diffTime.tv_sec*1000000000 + (int64_t)diffTime.tv_nsec)/1000;
-}
-
-#endif
 
 float ofxMSATimer::getAppTimeSeconds(){
     return getAppTimeMicros() / 1000000.0;
@@ -121,4 +83,34 @@ uint64_t ofxMSATimer::getElapsedMicros(){
 
 void ofxMSATimer::setStartTime(){
     timerStartTimeMicros = getAppTimeMicros();
+}
+
+double ofxMSATimer::getTotalSeconds() {
+#ifdef TARGET_OSX
+	return mach_absolute_time() * machMultiplier;
+#else
+	return ofGetElapsedTimef();
+#endif		
+}
+
+//--------------------------------------------------------------
+void ofxMSATimer::start() {
+	isRunning = true;
+	startTimeD = getTotalSeconds();
+}
+
+//--------------------------------------------------------------
+void ofxMSATimer::stop() {
+	stopTimeD = getTotalSeconds();
+	isRunning = false;
+}
+
+//--------------------------------------------------------------
+double ofxMSATimer::getSeconds() {
+	if (isRunning) {
+		return getTotalSeconds() - startTimeD;
+	}
+	else {
+		return stopTimeD - startTimeD;
+	}
 }
